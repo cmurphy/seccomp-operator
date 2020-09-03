@@ -24,6 +24,8 @@ import (
 // SeccompProfileSpec defines the desired state of SeccompProfile
 type SeccompProfileSpec struct {
 	seccomp.Seccomp
+	// TODO: seccomp.Seccomp doesn't support flags from runtime spec
+	// TODO: seccomp.Seccomp.Syscalls doesn't support errnoRet from runtime spec
 }
 
 // SeccompProfileStatus defines the observed state of SeccompProfile

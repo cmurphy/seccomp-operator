@@ -3,7 +3,6 @@ apiVersion: seccomp-operator.k8s-sigs.io/v1alpha1
 kind: SeccompProfile
 metadata:
   name: profile-block
-  namespace: default
 spec:
   defaultAction: "SCMP_ACT_ERRNO"
 ---
@@ -11,7 +10,6 @@ apiVersion: seccomp-operator.k8s-sigs.io/v1alpha1
 kind: SeccompProfile
 metadata:
   name: profile-complain
-  namespace: default
 spec:
   defaultAction: "SCMP_ACT_LOG"
 ---
@@ -19,6 +17,5 @@ apiVersion: seccomp-operator.k8s-sigs.io/v1alpha1
 kind: SeccompProfile
 metadata:
   name: profile-allow
-  namespace: default
 spec:
   defaultAction: "SCMP_ACT_ALLOW"
