@@ -22,9 +22,11 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog/v2/klogr"
 	ctrl "sigs.k8s.io/controller-runtime"
 
+	seccompoperatorv1alpha1 "sigs.k8s.io/seccomp-operator/api/v1alpha1"
 	"sigs.k8s.io/seccomp-operator/internal/pkg/config"
 	"sigs.k8s.io/seccomp-operator/internal/pkg/controllers/profile"
 	"sigs.k8s.io/seccomp-operator/internal/pkg/version"
@@ -38,7 +40,12 @@ const (
 var (
 	sync     = time.Second * 30
 	setupLog = ctrl.Log.WithName("setup")
+	scheme   = runtime.NewScheme()
 )
+
+func init() {
+	_ = seccompoperatorv1alpha1.AddToScheme(scheme)
+}
 
 func main() {
 	ctrl.SetLogger(klogr.New())
@@ -103,6 +110,7 @@ func run(*cli.Context) error {
 
 	ctrlOpts := ctrl.Options{
 		SyncPeriod: &sync,
+		Scheme:     scheme,
 	}
 
 	if os.Getenv(restrictNSKey) != "" {

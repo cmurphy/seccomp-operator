@@ -24,21 +24,23 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/containers/common/pkg/seccomp"
 	"github.com/crossplane/crossplane-runtime/pkg/event"
-	"github.com/crossplane/crossplane-runtime/pkg/resource"
+	//"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
+	//"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	seccompoperatorv1alpha1 "sigs.k8s.io/seccomp-operator/api/v1alpha1"
 	"sigs.k8s.io/seccomp-operator/internal/pkg/config"
 )
 
@@ -87,8 +89,8 @@ func Setup(mgr ctrl.Manager, l logr.Logger) error {
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
-		For(&corev1.ConfigMap{}).
-		WithEventFilter(resource.NewPredicates(isProfile)).
+		For(&seccompoperatorv1alpha1.SeccompProfile{}).
+		//WithEventFilter(resource.NewPredicates(isProfile)).
 		Complete(&Reconciler{
 			client: mgr.GetClient(),
 			log:    l,
@@ -103,24 +105,25 @@ type Reconciler struct {
 	record event.Recorder
 }
 
-// Reconcile reconciles a ConfigMap representing a seccomp profile.
+// Reconcile reconciles a SeccompProfile or a ConfigMap representing a seccomp profile.
+// TODO: add back ConfigMap reconciliation
 func (r *Reconciler) Reconcile(req reconcile.Request) (reconcile.Result, error) {
 	logger := r.log.WithValues("profile", req.Name, "namespace", req.Namespace)
 
 	ctx, cancel := context.WithTimeout(context.Background(), reconcileTimeout)
 	defer cancel()
 
-	configMap := &corev1.ConfigMap{}
-	if err := r.client.Get(ctx, types.NamespacedName{Name: req.Name, Namespace: req.Namespace}, configMap); err != nil {
-		// Returning an error means we will be requeued implicitly.
-		return reconcile.Result{}, errors.Wrap(ignoreNotFound(err), errGetProfile)
+	seccompProfile := &seccompoperatorv1alpha1.SeccompProfile{}
+	if err := r.client.Get(ctx, req.NamespacedName, seccompProfile); err != nil {
+		logger.Error(err, "unable to fetch SeccompProfile")
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	// Pre-check if the node supports seccomp
 	if !seccomp.IsSupported() {
 		err := errors.New("profile not added")
 		logger.Error(err, fmt.Sprintf("node %q does not support seccomp", os.Getenv(config.NodeNameEnvKey)))
-		r.record.Event(configMap,
+		r.record.Event(seccompProfile,
 			event.Warning(reasonSeccompNotSupported, err, os.Getenv(config.NodeNameEnvKey),
 				"node does not support seccomp"))
 
@@ -130,78 +133,61 @@ func (r *Reconciler) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		return reconcile.Result{}, nil
 	}
 
-	for profileName, profileContent := range configMap.Data {
-		if err := validateProfile(profileContent); err != nil {
-			logger.Error(err, "cannot validate profile "+profileName)
-			r.record.Event(configMap,
-				event.Warning(reasonInvalidSeccompProfile, err,
-					"name", profileName,
-				),
-			)
+	profileName := seccompProfile.Name
+	if !strings.HasSuffix(profileName, ".json") {
+		profileName += ".json"
+	}
 
-			// it might be possible that other profiles in the configMap are
-			// valid
-			continue
-		}
+	profileContent, err := json.Marshal(seccompProfile.Spec)
+	if err != nil {
+		logger.Error(err, "cannot validate profile "+profileName)
+		r.record.Event(seccompProfile, event.Warning(reasonInvalidSeccompProfile, err))
+		return reconcile.Result{RequeueAfter: wait}, nil
+	}
 
-		profilePath, err := GetProfilePath(profileName, configMap)
-		if err != nil {
-			logger.Error(err, "cannot get profile path")
-			r.record.Event(configMap,
-				event.Warning(reasonCannotGetProfilePath, err,
-					"name", profileName,
-				),
-			)
-			return reconcile.Result{RequeueAfter: wait}, nil
-		}
+	profilePath, err := GetProfilePath(profileName, seccompProfile)
+	if err != nil {
+		logger.Error(err, "cannot get profile path")
+		r.record.Event(seccompProfile, event.Warning(reasonCannotGetProfilePath, err))
+		return reconcile.Result{RequeueAfter: wait}, nil
+	}
 
-		if err = saveProfileOnDisk(profilePath, profileContent); err != nil {
-			logger.Error(err, "cannot save profile into disk")
-			r.record.Event(configMap,
-				event.Warning(reasonCannotSaveProfile, err,
-					"name", profileName,
-				),
-			)
-			return reconcile.Result{RequeueAfter: wait}, nil
-		}
-
-		r.record.Event(configMap,
-			event.Normal(reasonSavedProfile,
-				"Successfully saved profile to disk",
-				"name", profileName,
-			),
-		)
+	if err = saveProfileOnDisk(profilePath, profileContent); err != nil {
+		logger.Error(err, "cannot save profile into disk")
+		r.record.Event(seccompProfile, event.Warning(reasonCannotSaveProfile, err))
+		return reconcile.Result{RequeueAfter: wait}, nil
 	}
 
 	logger.Info(
 		"Reconciled profile",
-		"resource version", configMap.GetResourceVersion(),
-		"name", configMap.GetName(),
+		"resource version", seccompProfile.GetResourceVersion(),
+		"name", seccompProfile.GetName(),
 	)
+	r.record.Event(seccompProfile, event.Normal(reasonSavedProfile, "Successfully saved profile (test)"))
 	return reconcile.Result{}, nil
 }
 
-func saveProfileOnDisk(fileName, contents string) error {
+func saveProfileOnDisk(fileName string, contents []byte) error {
 	if err := os.MkdirAll(path.Dir(fileName), dirPermissionMode); err != nil {
 		return errors.Wrap(err, errCreatingOperatorDir)
 	}
 
-	if err := ioutil.WriteFile(fileName, []byte(contents), filePermissionMode); err != nil {
+	if err := ioutil.WriteFile(fileName, contents, filePermissionMode); err != nil {
 		return errors.Wrap(err, errSavingProfile)
 	}
 	return nil
 }
 
 // GetProfilePath returns the full path for the provided profile name and config.
-func GetProfilePath(profileName string, cfg *corev1.ConfigMap) (string, error) {
-	if cfg == nil {
+func GetProfilePath(profileName string, profile *seccompoperatorv1alpha1.SeccompProfile) (string, error) {
+	if profile == nil {
 		return "", errors.New(errConfigMapNil)
 	}
 
 	return path.Join(
 		config.ProfilesRootPath,
-		filepath.Base(cfg.ObjectMeta.Namespace),
-		filepath.Base(cfg.ObjectMeta.Name),
+		filepath.Base(profile.ObjectMeta.Namespace),
+		filepath.Base(profile.ObjectMeta.Name),
 		filepath.Base(profileName),
 	), nil
 }
