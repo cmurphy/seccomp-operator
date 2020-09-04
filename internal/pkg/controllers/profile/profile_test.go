@@ -105,6 +105,7 @@ func TestReconcile(t *testing.T) {
 			wantResult: reconcile.Result{},
 			wantErr:    errors.Wrap(errOops, errGetProfile),
 		},
+		// TODO: update mock get
 		"GotProfile": {
 			rec: &Reconciler{
 				client: &test.MockClient{
@@ -184,7 +185,7 @@ func TestSaveProfileOnDisk(t *testing.T) {
 				tc.setup()
 			}
 
-			gotErr := saveProfileOnDisk(tc.fileName, tc.contents)
+			gotErr := saveProfileOnDisk(tc.fileName, []byte(tc.contents))
 			file, _ := os.Stat(tc.fileName) // nolint: errcheck
 			gotFileCreated := file != nil
 
@@ -245,14 +246,11 @@ func TestGetProfilePath(t *testing.T) {
 				},
 			},
 		},
-		"ConfigMapCannotBeNil": {
-			wantErr: errConfigMapNil,
-		},
 	}
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			got, gotErr := GetProfilePath(tc.profileName, tc.config)
+			got, gotErr := GetProfilePath(tc.profileName, tc.config.ObjectMeta)
 			if tc.wantErr == "" {
 				require.NoError(t, gotErr)
 			} else {

@@ -12,6 +12,7 @@ require (
 	golang.org/x/sys v0.0.0-20200806125547-5acd03effb82
 	k8s.io/api v0.18.6
 	k8s.io/apimachinery v0.18.6
+	k8s.io/client-go v0.18.6
 	k8s.io/klog/v2 v2.3.0
 	k8s.io/release v0.4.0
 	sigs.k8s.io/controller-runtime v0.6.2
