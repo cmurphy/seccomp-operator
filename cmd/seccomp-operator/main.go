@@ -23,7 +23,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 	"k8s.io/apimachinery/pkg/runtime"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/klog/v2/klogr"
 	ctrl "sigs.k8s.io/controller-runtime"
 
@@ -43,11 +42,6 @@ var (
 	setupLog = ctrl.Log.WithName("setup")
 	scheme   = runtime.NewScheme()
 )
-
-func init() {
-	_ = clientgoscheme.AddToScheme(scheme)
-	_ = seccompoperatorv1alpha1.AddToScheme(scheme)
-}
 
 func main() {
 	ctrl.SetLogger(klogr.New())
@@ -112,7 +106,6 @@ func run(*cli.Context) error {
 
 	ctrlOpts := ctrl.Options{
 		SyncPeriod: &sync,
-		Scheme:     scheme,
 	}
 
 	if os.Getenv(restrictNSKey) != "" {
@@ -122,6 +115,10 @@ func run(*cli.Context) error {
 	mgr, err := ctrl.NewManager(cfg, ctrlOpts)
 	if err != nil {
 		return errors.Wrap(err, "create manager")
+	}
+
+	if err := seccompoperatorv1alpha1.AddToScheme(mgr.GetScheme()); err != nil {
+		return errors.Wrap(err, "Cannot add core Seccomp APIs to scheme")
 	}
 
 	if err := profile.Setup(mgr, ctrl.Log.WithName("profile")); err != nil {
