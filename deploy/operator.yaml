@@ -41,8 +41,6 @@ rules:
   resources:
   - seccompprofiles
   verbs:
-  - create
-  - patch
   - get
   - watch
   - list

@@ -24,7 +24,7 @@ rules:
   verbs: ["create", "patch"]
 - apiGroups: ["seccomp-operator.k8s-sigs.io"]
   resources: ["seccompprofiles"]
-  verbs: ["create", "patch", "get", "watch", "list"]
+  verbs: ["get", "watch", "list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
