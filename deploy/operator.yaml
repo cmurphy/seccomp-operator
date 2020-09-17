@@ -212,18 +212,13 @@ spec:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: SeccompProfile is a cluster level specification for a seccomp
-          profile. See https://github.com/opencontainers/runtime-spec/blob/master/config-linux.md#seccomp
+        description: SeccompProfile is a cluster level specification for a seccomp profile. See https://github.com/opencontainers/runtime-spec/blob/master/config-linux.md#seccomp
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
             type: string
           metadata:
             type: object
@@ -278,11 +273,7 @@ spec:
                   type: string
                 type: array
               syscalls:
-                description: match a syscall in seccomp. While this property is OPTIONAL,
-                  some values of defaultAction are not useful without syscalls entries.
-                  For example, if defaultAction is SCMP_ACT_KILL and syscalls is empty
-                  or unset, the kernel will kill the container process on its first
-                  syscall
+                description: match a syscall in seccomp. While this property is OPTIONAL, some values of defaultAction are not useful without syscalls entries. For example, if defaultAction is SCMP_ACT_KILL and syscalls is empty or unset, the kernel will kill the container process on its first syscall
                 items:
                   description: Syscall defines a syscall in seccomp.
                   properties:
@@ -334,9 +325,7 @@ spec:
                         type: object
                       type: array
                     errnoRet:
-                      description: the errno return code to use. Some actions like
-                        SCMP_ACT_ERRNO and SCMP_ACT_TRACE allow to specify the errno
-                        code to return
+                      description: the errno return code to use. Some actions like SCMP_ACT_ERRNO and SCMP_ACT_TRACE allow to specify the errno code to return
                       type: string
                     names:
                       description: the names of the syscalls
