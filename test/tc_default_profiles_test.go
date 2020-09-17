@@ -62,7 +62,7 @@ func (e *e2e) testCaseDefaultAndExampleProfiles(nodes []string) {
 func (e *e2e) verifyProfilesContent(node string, cm *v1.ConfigMap) {
 	e.logf("Verifying %s profile on node %s", cm.Name, node)
 	for name, content := range cm.Data {
-		profilePath, err := profile.GetProfilePath(name, cm)
+		profilePath, err := profile.GetProfilePath(name, cm.ObjectMeta.Namespace, cm.ObjectMeta.Name)
 		e.Nil(err)
 		catOutput := e.execNode(node, "cat", profilePath)
 		e.Contains(catOutput, content)

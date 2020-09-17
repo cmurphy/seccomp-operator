@@ -21,17 +21,22 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// SeccompProfileSpec defines the desired state of SeccompProfile
+// SeccompProfileSpec defines the desired state of SeccompProfile.
 type SeccompProfileSpec struct {
 	// Properties from containers/common/pkg/seccomp.Seccomp type
 
 	// the default action for seccomp
+	//nolint:lll
 	// +kubebuilder:validation:Enum=SCMP_ACT_KILL;SCMP_ACT_KILL_PROCESS;SCMP_ACT_KILL_THREAD;SCMP_ACT_TRAP;SCMP_ACT_ERRNO;SCMP_ACT_TRACE;SCMP_ACT_ALLOW;SCMP_ACT_LOG
 	DefaultAction seccomp.Action `json:"defaultAction"`
 	// the architecture used for system calls
+	//nolint:lll
 	// +kubebuilder:validation:Enum=SCMP_ARCH_X86;SCMP_ARCH_X86_64;SCMP_ARCH_X32;SCMP_ARCH_ARM;SCMP_ARCH_AARCH64;SCMP_ARCH_MIPS;SCMP_ARCH_MIPS64;SCMP_ARCH_MIPS64N32;SCMP_ARCH_MIPSEL;SCMP_ARCH_MIPSEL64;SCMP_ARCH_MIPSEL64N32;SCMP_ARCH_PPC;SCMP_ARCH_PPC64;SCMP_ARCH_PPC64LE;SCMP_ARCH_S390;SCMP_ARCH_S390X;SCMP_ARCH_PARISC;SCMP_ARCH_PARISC64;SCMP_ARCH_RISCV64
 	Architectures []seccomp.Arch `json:"architectures,omitempty"`
-	// match a syscall in seccomp. While this property is OPTIONAL, some values of defaultAction are not useful without syscalls entries. For example, if defaultAction is SCMP_ACT_KILL and syscalls is empty or unset, the kernel will kill the container process on its first syscall
+	// match a syscall in seccomp. While this property is OPTIONAL, some values
+	// of defaultAction are not useful without syscalls entries. For example,
+	// if defaultAction is SCMP_ACT_KILL and syscalls is empty or unset, the
+	// kernel will kill the container process on its first syscall
 	Syscalls []*Syscall `json:"syscalls,omitempty"`
 
 	// Additional properties from OCI runtime spec
@@ -41,20 +46,22 @@ type SeccompProfileSpec struct {
 	Flags []string `json:"flags,omitempty"`
 }
 
-// Syscall defines a syscall in seccomp
+// Syscall defines a syscall in seccomp.
 type Syscall struct {
 	// the names of the syscalls
 	Names []string `json:"names"`
 	// the action for seccomp rules
+	//nolint:lll
 	// +kubebuilder:validation:Enum=SCMP_ACT_KILL;SCMP_ACT_KILL_PROCESS;SCMP_ACT_KILL_THREAD;SCMP_ACT_TRAP;SCMP_ACT_ERRNO;SCMP_ACT_TRACE;SCMP_ACT_ALLOW;SCMP_ACT_LOG
 	Action seccomp.Action `json:"action"`
-	// the errno return code to use. Some actions like SCMP_ACT_ERRNO and SCMP_ACT_TRACE allow to specify the errno code to return
+	// the errno return code to use. Some actions like SCMP_ACT_ERRNO and
+	// SCMP_ACT_TRACE allow to specify the errno code to return
 	ErrnoRet string `json:"errnoRet,omitempty"`
 	// the specific syscall in seccomp
 	Args []*Arg `json:"args,omitempty"`
 }
 
-// Arg defines the specific syscall in seccomp
+// Arg defines the specific syscall in seccomp.
 type Arg struct {
 	// the index for syscall arguments in seccomp
 	// +kubebuilder:validation:Minimum=0
@@ -66,6 +73,7 @@ type Arg struct {
 	// +kubebuilder:validation:Minimum=0
 	ValueTwo uint64 `json:"valueTwo,omitempty"`
 	// the operator for syscall arguments in seccomp
+	//nolint:lll
 	// +kubebuilder:validation:Enum=SCMP_CMP_NE;SCMP_CMP_LT;SCMP_CMP_LE;SCMP_CMP_EQ;SCMP_CMP_GE;SCMP_CMP_GT;SCMP_CMP_MASKED_EQ
 	Op seccomp.Operator `json:"op"`
 }
@@ -84,13 +92,13 @@ type SeccompProfile struct {
 
 // +kubebuilder:object:root=true
 
-// SeccompProfileList contains a list of SeccompProfile
+// SeccompProfileList contains a list of SeccompProfile.
 type SeccompProfileList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []SeccompProfile `json:"items"`
 }
 
-func init() {
+func init() { //nolint:gochecknoinits
 	SchemeBuilder.Register(&SeccompProfile{}, &SeccompProfileList{})
 }

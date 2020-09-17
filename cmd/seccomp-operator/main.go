@@ -22,7 +22,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog/v2/klogr"
 	ctrl "sigs.k8s.io/controller-runtime"
 
@@ -40,7 +39,6 @@ const (
 var (
 	sync     = time.Second * 30
 	setupLog = ctrl.Log.WithName("setup")
-	scheme   = runtime.NewScheme()
 )
 
 func main() {

@@ -228,7 +228,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: SeccompProfileSpec defines the desired state of SeccompProfile
+            description: SeccompProfileSpec defines the desired state of SeccompProfile.
             properties:
               architectures:
                 description: the architecture used for system calls
@@ -284,7 +284,7 @@ spec:
                   or unset, the kernel will kill the container process on its first
                   syscall
                 items:
-                  description: Syscall defines a syscall in seccomp
+                  description: Syscall defines a syscall in seccomp.
                   properties:
                     action:
                       description: the action for seccomp rules
@@ -301,7 +301,7 @@ spec:
                     args:
                       description: the specific syscall in seccomp
                       items:
-                        description: Arg defines the specific syscall in seccomp
+                        description: Arg defines the specific syscall in seccomp.
                         properties:
                           index:
                             description: the index for syscall arguments in seccomp

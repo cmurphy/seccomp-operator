@@ -161,10 +161,10 @@ func (r *Reconciler) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	}
 
 	return r.reconcileConfigMap(configMap, logger)
-
 }
 
-func (r *Reconciler) reconcileSeccompProfile(sp *seccompoperatorv1alpha1.SeccompProfile, l logr.Logger) (reconcile.Result, error) {
+func (r *Reconciler) reconcileSeccompProfile(
+	sp *seccompoperatorv1alpha1.SeccompProfile, l logr.Logger) (reconcile.Result, error) {
 	if sp == nil {
 		return reconcile.Result{}, errors.New(errSeccompProfileNil)
 	}
@@ -250,7 +250,7 @@ func saveProfileOnDisk(fileName string, contents []byte) error {
 }
 
 // GetProfilePath returns the full path for the provided profile name and config.
-func GetProfilePath(profileName string, namespace string, subdir string) (string, error) {
+func GetProfilePath(profileName, namespace, subdir string) (string, error) {
 	if filepath.Ext(profileName) == "" {
 		profileName += ".json"
 	}
