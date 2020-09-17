@@ -95,6 +95,7 @@ func Setup(mgr ctrl.Manager, l logr.Logger) error {
 			client: mgr.GetClient(),
 			log:    l,
 			record: event.NewAPIRecorder(mgr.GetEventRecorderFor("profile")),
+			save:   saveProfileOnDisk,
 		}); err != nil {
 		return err
 	}
@@ -105,14 +106,18 @@ func Setup(mgr ctrl.Manager, l logr.Logger) error {
 			client: mgr.GetClient(),
 			log:    l,
 			record: event.NewAPIRecorder(mgr.GetEventRecorderFor("profile")),
+			save:   saveProfileOnDisk,
 		})
 }
+
+type saver func(string, []byte) error
 
 // A Reconciler reconciles seccomp profiles.
 type Reconciler struct {
 	client client.Client
 	log    logr.Logger
 	record event.Recorder
+	save   saver
 }
 
 // Reconcile reconciles a SeccompProfile or a ConfigMap representing a seccomp profile.
@@ -178,7 +183,7 @@ func (r *Reconciler) reconcileSeccompProfile(sp *seccompoperatorv1alpha1.Seccomp
 		r.record.Event(sp, event.Warning(reasonCannotGetProfilePath, err))
 		return reconcile.Result{RequeueAfter: wait}, nil
 	}
-	if err = saveProfileOnDisk(profilePath, profileContent); err != nil {
+	if err = r.save(profilePath, profileContent); err != nil {
 		l.Error(err, "cannot save profile into disk")
 		r.record.Event(sp, event.Warning(reasonCannotSaveProfile, err))
 		return reconcile.Result{RequeueAfter: wait}, nil
@@ -213,12 +218,12 @@ func (r *Reconciler) reconcileConfigMap(cm *corev1.ConfigMap, l logr.Logger) (re
 			return reconcile.Result{RequeueAfter: wait}, nil
 		}
 
-		if err = saveProfileOnDisk(profilePath, []byte(profileContent)); err != nil {
+		if err = r.save(profilePath, []byte(profileContent)); err != nil {
 			l.Error(err, "cannot save profile into disk")
 			r.record.Event(cm, event.Warning(reasonCannotSaveProfile, err))
 			return reconcile.Result{RequeueAfter: wait}, nil
 		}
-		if err = saveProfileOnDisk(profilePath, []byte(profileContent)); err != nil {
+		if err = r.save(profilePath, []byte(profileContent)); err != nil {
 			l.Error(err, "cannot save profile into disk")
 			r.record.Event(cm, event.Warning(reasonCannotSaveProfile, err))
 			return reconcile.Result{RequeueAfter: wait}, nil

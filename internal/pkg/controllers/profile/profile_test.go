@@ -17,6 +17,7 @@ limitations under the License.
 package profile
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"path"
@@ -94,7 +95,7 @@ func TestReconcile(t *testing.T) {
 			wantResult: reconcile.Result{},
 			wantErr:    nil,
 		},
-		"ErrGetProfile": {
+		"ConfigMapErrGetProfile": {
 			rec: &Reconciler{
 				client: &test.MockClient{
 					MockGet: test.NewMockGetFn(errOops),
@@ -105,14 +106,51 @@ func TestReconcile(t *testing.T) {
 			wantResult: reconcile.Result{},
 			wantErr:    errors.Wrap(errOops, errGetProfile),
 		},
-		// TODO: update mock get
-		"GotProfile": {
+		"ConfigMapGotProfile": {
+			rec: &Reconciler{
+				client: &test.MockClient{
+					MockGet: func(_ context.Context, n types.NamespacedName, o runtime.Object) error {
+						switch o.(type) {
+						case *corev1.ConfigMap:
+							return nil
+						default:
+							return kerrors.NewNotFound(schema.GroupResource{}, name)
+						}
+					},
+				},
+				log:    log.Log,
+				record: event.NewNopRecorder(),
+			},
+			req:        reconcile.Request{NamespacedName: types.NamespacedName{Namespace: namespace, Name: name}},
+			wantResult: reconcile.Result{},
+			wantErr:    nil,
+		},
+		"CRDErrGetProfile": {
+			rec: &Reconciler{
+				client: &test.MockClient{
+					MockGet: func(_ context.Context, n types.NamespacedName, o runtime.Object) error {
+						switch o.(type) {
+						case *corev1.ConfigMap:
+							return errOops
+						default:
+							return kerrors.NewNotFound(schema.GroupResource{}, name)
+						}
+					},
+				},
+				log: log.Log,
+			},
+			req:        reconcile.Request{NamespacedName: types.NamespacedName{Namespace: namespace, Name: name}},
+			wantResult: reconcile.Result{},
+			wantErr:    errors.Wrap(errOops, errGetProfile),
+		},
+		"CRDGotProfile": {
 			rec: &Reconciler{
 				client: &test.MockClient{
 					MockGet: test.NewMockGetFn(nil),
 				},
 				log:    log.Log,
 				record: event.NewNopRecorder(),
+				save:   func(_ string, _ []byte) error { return nil },
 			},
 			req:        reconcile.Request{NamespacedName: types.NamespacedName{Namespace: namespace, Name: name}},
 			wantResult: reconcile.Result{},
