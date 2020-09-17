@@ -351,9 +351,6 @@ spec:
             required:
             - defaultAction
             type: object
-          status:
-            description: SeccompProfileStatus defines the observed state of SeccompProfile
-            type: object
         type: object
     served: true
     storage: true

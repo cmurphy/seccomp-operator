@@ -70,11 +70,6 @@ type Arg struct {
 	Op seccomp.Operator `json:"op"`
 }
 
-// SeccompProfileStatus defines the observed state of SeccompProfile
-type SeccompProfileStatus struct {
-	// TODO: record some state?
-}
-
 // +kubebuilder:object:root=true
 
 // SeccompProfile is a cluster level specification for a seccomp profile.
@@ -84,8 +79,7 @@ type SeccompProfile struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   SeccompProfileSpec   `json:"spec,omitempty"`
-	Status SeccompProfileStatus `json:"status,omitempty"`
+	Spec SeccompProfileSpec `json:"spec,omitempty"`
 }
 
 // +kubebuilder:object:root=true
