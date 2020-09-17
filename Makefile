@@ -139,26 +139,9 @@ test-e2e: ## Run the end-to-end tests
 	$(GO) test -timeout 20m -tags e2e -count=1 ./test/... -v
 
 # Generate CRD manifest
-manifests: controller-gen
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./api/..." output:crd:stdout > deploy/base/crd.yaml
+manifests:
+	$(GO) run -tags generate sigs.k8s.io/controller-tools/cmd/controller-gen $(CRD_OPTIONS) paths="./api/..." output:crd:stdout > deploy/base/crd.yaml
 
 # Generate deepcopy code
-generate: controller-gen
-	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate/boilerplate.go.txt",year=$(shell date -u "+%Y") paths="./..."
-
-# find or download controller-gen
-# download controller-gen if necessary
-controller-gen:
-ifeq (, $(shell which controller-gen))
-	@{ \
-	set -e ;\
-	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
-	cd $$CONTROLLER_GEN_TMP_DIR ;\
-	go mod init tmp ;\
-	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.5 ;\
-	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
-	}
-CONTROLLER_GEN=$(GOBIN)/controller-gen
-else
-CONTROLLER_GEN=$(shell which controller-gen)
-endif
+generate:
+	$(GO) run -tags generate sigs.k8s.io/controller-tools/cmd/controller-gen object:headerFile="hack/boilerplate/boilerplate.go.txt",year=$(shell date -u "+%Y") paths="./..."
