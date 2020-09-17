@@ -250,7 +250,7 @@ func TestGetProfilePath(t *testing.T) {
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			got, gotErr := GetProfilePath(tc.profileName, tc.config.ObjectMeta)
+			got, gotErr := GetProfilePath(tc.profileName, tc.config.ObjectMeta.Namespace, tc.config.ObjectMeta.Name)
 			if tc.wantErr == "" {
 				require.NoError(t, gotErr)
 			} else {

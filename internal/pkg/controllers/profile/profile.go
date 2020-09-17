@@ -24,7 +24,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/containers/common/pkg/seccomp"
@@ -34,7 +33,6 @@ import (
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -166,10 +164,6 @@ func (r *Reconciler) reconcileSeccompProfile(sp *seccompoperatorv1alpha1.Seccomp
 		return reconcile.Result{}, errors.New(errSeccompProfileNil)
 	}
 	profileName := sp.Name
-	// TODO: make this path name consistent with the configmap way
-	if !strings.HasSuffix(profileName, ".json") {
-		profileName += ".json"
-	}
 
 	profileContent, err := json.Marshal(sp.Spec)
 	if err != nil {
@@ -178,7 +172,7 @@ func (r *Reconciler) reconcileSeccompProfile(sp *seccompoperatorv1alpha1.Seccomp
 		return reconcile.Result{RequeueAfter: wait}, nil
 	}
 
-	profilePath, err := GetProfilePath(profileName, sp.ObjectMeta)
+	profilePath, err := GetProfilePath(profileName, sp.ObjectMeta.Namespace, config.CustomProfilesDirectoryName)
 	if err != nil {
 		l.Error(err, "cannot get profile path")
 		r.record.Event(sp, event.Warning(reasonCannotGetProfilePath, err))
@@ -212,7 +206,7 @@ func (r *Reconciler) reconcileConfigMap(cm *corev1.ConfigMap, l logr.Logger) (re
 			continue
 		}
 
-		profilePath, err := GetProfilePath(profileName, cm.ObjectMeta)
+		profilePath, err := GetProfilePath(profileName, cm.ObjectMeta.Namespace, cm.ObjectMeta.Name)
 		if err != nil {
 			l.Error(err, "cannot get profile path")
 			r.record.Event(cm, event.Warning(reasonCannotGetProfilePath, err))
@@ -251,11 +245,14 @@ func saveProfileOnDisk(fileName string, contents []byte) error {
 }
 
 // GetProfilePath returns the full path for the provided profile name and config.
-func GetProfilePath(profileName string, objMeta metav1.ObjectMeta) (string, error) {
+func GetProfilePath(profileName string, namespace string, subdir string) (string, error) {
+	if filepath.Ext(profileName) == "" {
+		profileName += ".json"
+	}
 	return path.Join(
 		config.ProfilesRootPath,
-		filepath.Base(objMeta.Namespace),
-		filepath.Base(objMeta.Name),
+		filepath.Base(namespace),
+		filepath.Base(subdir),
 		filepath.Base(profileName),
 	), nil
 }
