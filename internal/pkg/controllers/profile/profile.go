@@ -65,13 +65,23 @@ const (
 	// its intention to be treated as a seccomp profile.
 	seccompProfileAnnotation = "seccomp.security.kubernetes.io/profile"
 
-	reasonSeccompNotSupported   event.Reason = "SeccompNotSupportedOnNode"
-	reasonInvalidSeccompProfile event.Reason = "InvalidSeccompProfile"
-	reasonCannotGetProfilePath  event.Reason = "CannotGetSeccompProfilePath"
-	reasonCannotSaveProfile     event.Reason = "CannotSaveSeccompProfile"
+	reasonSeccompNotSupported    event.Reason = "SeccompNotSupportedOnNode"
+	reasonInvalidSeccompProfile  event.Reason = "InvalidSeccompProfile"
+	reasonCannotGetProfilePath   event.Reason = "CannotGetSeccompProfilePath"
+	reasonCannotSaveProfile      event.Reason = "CannotSaveSeccompProfile"
+	reasonFoundUnexpectedProfile event.Reason = "FoundUnexpectedProfile"
 
 	reasonSavedProfile event.Reason = "SavedSeccompProfile"
 )
+
+type kind uint8
+
+const (
+	seccompProfileKind kind = iota
+	configMapKind
+)
+
+var activeController kind
 
 // isProfile checks if a ConfigMap has been designated as a seccomp profile.
 func isProfile(obj runtime.Object) bool {
@@ -86,6 +96,15 @@ func isProfile(obj runtime.Object) bool {
 // Setup adds a controller that reconciles seccomp profiles.
 func Setup(mgr ctrl.Manager, l logr.Logger) error {
 	const name = "profile"
+
+	switch os.Getenv(config.ProfileControllerEnvKey) {
+	case "", "ConfigMap": // defaults to ConfigMap if no value provided
+		activeController = configMapKind
+	case "SeccompProfile":
+		activeController = seccompProfileKind
+	default:
+		return errors.New("invalid profile controller configured")
+	}
 
 	if err := ctrl.NewControllerManagedBy(mgr).
 		Named(name).
@@ -127,25 +146,11 @@ func (r *Reconciler) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 	ctx, cancel := context.WithTimeout(context.Background(), reconcileTimeout)
 	defer cancel()
 
-	// Look for the SeccompProfile Kind first
-	seccompProfile := &seccompoperatorv1alpha1.SeccompProfile{}
-	if err := r.client.Get(ctx, req.NamespacedName, seccompProfile); err != nil {
-		logger.Error(err, "unable to fetch SeccompProfile")
-		seccompProfile = nil
-	}
-	// If no SeccompProfile, look for a ConfigMap
-	configMap := &corev1.ConfigMap{}
-	if seccompProfile == nil {
-		if err := r.client.Get(ctx, types.NamespacedName{Name: req.Name, Namespace: req.Namespace}, configMap); err != nil {
-			// Returning an error means we will be requeued implicitly.
-			return reconcile.Result{}, errors.Wrap(ignoreNotFound(err), errGetProfile)
-		}
-	}
-
 	// Pre-check if the node supports seccomp
 	if !seccomp.IsSupported() {
 		err := errors.New("profile not added")
 		logger.Error(err, fmt.Sprintf("node %q does not support seccomp", os.Getenv(config.NodeNameEnvKey)))
+		seccompProfile := &seccompoperatorv1alpha1.SeccompProfile{}
 		r.record.Event(seccompProfile,
 			event.Warning(reasonSeccompNotSupported, err, os.Getenv(config.NodeNameEnvKey),
 				"node does not support seccomp"))
@@ -156,10 +161,31 @@ func (r *Reconciler) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		return reconcile.Result{}, nil
 	}
 
-	if seccompProfile != nil {
+	seccompProfile := &seccompoperatorv1alpha1.SeccompProfile{}
+	configMap := &corev1.ConfigMap{}
+	if activeController == seccompProfileKind {
+		// Alert user if ConfigMap profiles are found - we are configured to ignore them
+		if err := r.client.Get(ctx, types.NamespacedName{Name: req.Name, Namespace: req.Namespace}, configMap); err == nil {
+			r.record.Event(configMap,
+				event.Warning(reasonFoundUnexpectedProfile, errors.New("ignoring unexpected annotated ConfigMap")))
+			r.log.Info("ignoring unexpected annotated ConfigMap", "name", req.Name, "namespace", req.Namespace)
+		}
+		if err := r.client.Get(ctx, req.NamespacedName, seccompProfile); err != nil {
+			// Expected to find a SeccompProfile, return an error and requeue
+			return reconcile.Result{}, errors.Wrap(ignoreNotFound(err), errGetProfile)
+		}
 		return r.reconcileSeccompProfile(seccompProfile, logger)
 	}
-
+	// Alert user if SeccompProfile profiles are found - we are configured to ignore them
+	if err := r.client.Get(ctx, req.NamespacedName, seccompProfile); err == nil {
+		r.record.Event(seccompProfile,
+			event.Warning(reasonFoundUnexpectedProfile, errors.New("ignoring unexpected SeccompProfile")))
+		r.log.Info("ignoring unexpected SeccompProfile", "name", req.Name, "namespace", req.Namespace)
+	}
+	if err := r.client.Get(ctx, types.NamespacedName{Name: req.Name, Namespace: req.Namespace}, configMap); err != nil {
+		// Expected to find an annotated ConfigMap, return an error and requeue
+		return reconcile.Result{}, errors.Wrap(ignoreNotFound(err), errGetProfile)
+	}
 	return r.reconcileConfigMap(configMap, logger)
 }
 

@@ -39,4 +39,9 @@ const (
 	// NodeNameEnvKey is the default environment variable key for retrieving
 	// the name of the current node.
 	NodeNameEnvKey = "NODE_NAME"
+
+	// ProfileControllerEnvKey is the environment variable that configures
+	// which type of controller is authoritative over seccomp profiles, either
+	// CRD or ConfigMap.
+	ProfileControllerEnvKey = "PROFILE_CONTROLLER"
 )
