@@ -28,6 +28,7 @@ import (
 
 func (e *e2e) testCaseCRDExampleProfiles(nodes []string) {
 	const exampleProfilePath = "examples/seccompprofile.yaml"
+	e.reconfigureOperator(manifest)
 	exampleProfileNames := [3]string{"profile-allow", "profile-complain", "profile-block"}
 	e.kubectl("create", "-f", exampleProfilePath)
 	defer e.kubectl("delete", "-f", exampleProfilePath)
@@ -60,4 +61,14 @@ func (e *e2e) verifyCRDProfileContent(node string, sp *seccompoperatorv1alpha1.S
 	e.Nil(err)
 	catOutput := e.execNode(node, "cat", profilePath)
 	e.Contains(catOutput, string(expected))
+}
+
+func (e *e2e) reconfigureOperator(manifest string) {
+	e.cleanupOperator(manifest)
+	e.run(
+		//nolint:lll
+		"sed", "-i", `N;/containers:\n\ *- env:/a \ \ \ \ \ \ \ \ - name: PROFILE_CONTROLLER\n\  \ \ \ \ \ \ \ \ value: SeccompProfile`,
+		manifest,
+	)
+	e.deployOperator(manifest)
 }
