@@ -17,7 +17,6 @@ limitations under the License.
 package profile
 
 import (
-	"context"
 	"io/ioutil"
 	"os"
 	"path"
@@ -83,6 +82,7 @@ func TestReconcile(t *testing.T) {
 		req        reconcile.Request
 		wantResult reconcile.Result
 		wantErr    error
+		ac         kind
 	}{
 		"ProfileNotFound": {
 			rec: &Reconciler{
@@ -94,6 +94,7 @@ func TestReconcile(t *testing.T) {
 			req:        reconcile.Request{NamespacedName: types.NamespacedName{Namespace: namespace, Name: name}},
 			wantResult: reconcile.Result{},
 			wantErr:    nil,
+			ac:         configMapKind,
 		},
 		"ConfigMapErrGetProfile": {
 			rec: &Reconciler{
@@ -105,18 +106,12 @@ func TestReconcile(t *testing.T) {
 			req:        reconcile.Request{NamespacedName: types.NamespacedName{Namespace: namespace, Name: name}},
 			wantResult: reconcile.Result{},
 			wantErr:    errors.Wrap(errOops, errGetProfile),
+			ac:         configMapKind,
 		},
 		"ConfigMapGotProfile": {
 			rec: &Reconciler{
 				client: &test.MockClient{
-					MockGet: func(_ context.Context, n types.NamespacedName, o runtime.Object) error {
-						switch o.(type) {
-						case *corev1.ConfigMap:
-							return nil
-						default:
-							return kerrors.NewNotFound(schema.GroupResource{}, name)
-						}
-					},
+					MockGet: test.NewMockGetFn(nil),
 				},
 				log:    log.Log,
 				record: event.NewNopRecorder(),
@@ -124,18 +119,12 @@ func TestReconcile(t *testing.T) {
 			req:        reconcile.Request{NamespacedName: types.NamespacedName{Namespace: namespace, Name: name}},
 			wantResult: reconcile.Result{},
 			wantErr:    nil,
+			ac:         configMapKind,
 		},
 		"CRDErrGetProfile": {
 			rec: &Reconciler{
 				client: &test.MockClient{
-					MockGet: func(_ context.Context, n types.NamespacedName, o runtime.Object) error {
-						switch o.(type) {
-						case *corev1.ConfigMap:
-							return errOops
-						default:
-							return kerrors.NewNotFound(schema.GroupResource{}, name)
-						}
-					},
+					MockGet: test.NewMockGetFn(errOops),
 				},
 				log: log.Log,
 			},
@@ -155,10 +144,12 @@ func TestReconcile(t *testing.T) {
 			req:        reconcile.Request{NamespacedName: types.NamespacedName{Namespace: namespace, Name: name}},
 			wantResult: reconcile.Result{},
 			wantErr:    nil,
+			ac:         seccompProfileKind,
 		},
 	}
 
 	for name, tc := range cases {
+		activeController = tc.ac
 		t.Run(name, func(t *testing.T) {
 			gotResult, gotErr := tc.rec.Reconcile(tc.req)
 			if tc.wantErr != nil {
