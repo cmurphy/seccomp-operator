@@ -26,14 +26,13 @@ import (
 	"sigs.k8s.io/seccomp-operator/internal/pkg/controllers/profile"
 )
 
-func (e *e2e) testCaseCRDExampleProfiles(nodes []string) {
+func (e *e2e) testCaseCRDDefaultAndExampleProfiles(nodes []string) {
 	const exampleProfilePath = "examples/seccompprofile.yaml"
 	e.reconfigureOperator(manifest)
 	exampleProfileNames := [3]string{"profile-allow", "profile-complain", "profile-block"}
+	defaultProfileNames := [2]string{"seccomp-operator", "nginx-1.19.1"}
 	e.kubectl("create", "-f", exampleProfilePath)
 	defer e.kubectl("delete", "-f", exampleProfilePath)
-
-	e.logf("Retrieving deployed example profile")
 
 	// Content verification
 	for _, node := range nodes {
@@ -43,6 +42,12 @@ func (e *e2e) testCaseCRDExampleProfiles(nodes []string) {
 			node, "stat", "-L", "-c", `%a,%u,%g`, config.ProfilesRootPath,
 		)
 		e.Contains(statOutput, "744,2000,2000")
+
+		// Default profile verification
+		for _, name := range defaultProfileNames {
+			sp := e.getSeccompProfile(name, "seccomp-operator")
+			e.verifyCRDProfileContent(node, sp)
+		}
 
 		// Example profile verification
 		for _, name := range exampleProfileNames {

@@ -167,7 +167,8 @@ func (r *Reconciler) Reconcile(req reconcile.Request) (reconcile.Result, error) 
 		// Alert user if ConfigMap profiles are found - we are configured to ignore them
 		if err := r.client.Get(ctx, types.NamespacedName{Name: req.Name, Namespace: req.Namespace}, configMap); err == nil {
 			r.record.Event(configMap,
-				event.Warning(reasonFoundUnexpectedProfile, errors.New("ignoring unexpected annotated ConfigMap")))
+				event.Warning(reasonFoundUnexpectedProfile,
+					errors.New(fmt.Sprintf("ignoring unexpected annotated ConfigMap %q in namespace %q", req.Name, req.Namespace))))
 			r.log.Info("ignoring unexpected annotated ConfigMap", "name", req.Name, "namespace", req.Namespace)
 		}
 		if err := r.client.Get(ctx, req.NamespacedName, seccompProfile); err != nil {
@@ -277,7 +278,7 @@ func saveProfileOnDisk(fileName string, contents []byte) error {
 
 // GetProfilePath returns the full path for the provided profile name and config.
 func GetProfilePath(profileName, namespace, subdir string) (string, error) {
-	if filepath.Ext(profileName) == "" {
+	if filepath.Ext(profileName) != ".json" {
 		profileName += ".json"
 	}
 	return path.Join(

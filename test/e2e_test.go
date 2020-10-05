@@ -62,7 +62,7 @@ func (e *e2e) TestSeccompOperator() {
 		},
 		{
 			"Verify example CRD profiles",
-			e.testCaseCRDExampleProfiles,
+			e.testCaseCRDDefaultAndExampleProfiles,
 		},
 	} {
 		e.logf("> Running testcase: %s", testCase.description)
@@ -88,6 +88,10 @@ func (e *e2e) deployOperator(manifest string) {
 	// Deploy the operator
 	e.logf("Deploying operator")
 	e.kubectl("create", "-f", manifest)
+
+	// Deploy SeccompProfiles
+	e.logf("Deploying default profiles")
+	e.kubectl("create", "-f", "deploy/defaultprofiles.yaml")
 
 	// Wait for the operator to be ready
 	e.logf("Waiting for operator to be ready")
