@@ -18,6 +18,25 @@ spec:
     spec:
       serviceAccountName: seccomp-operator
       initContainers:
+        - name: extract-seccomp-operator-profile
+          # TODO: replace this with golang app
+          image: bitnami/kubectl:1.19.2
+          command:
+          - bash
+          - -c
+          args:
+          - |
+            set -euo pipefail
+
+            while ! kubectl get crd | grep seccompprofile ; do sleep 1 ; done
+
+            kubectl apply -f /opt/bootstrap-profiles/
+            kubectl --namespace seccomp-operator get seccompprofile seccomp-operator -o jsonpath='{.spec}' > /opt/seccomp-profiles/seccomp-operator.json
+          volumeMounts:
+          - name: profile-configmap-volume
+            mountPath: /opt/bootstrap-profiles
+          - name: seccomp-operator-profile-volume
+            mountPath: /opt/seccomp-profiles
         - name: non-root-enabler
           image: bash
           # Creates folder /var/lib/seccomp-operator, sets 2000:2000 as its
@@ -51,7 +70,7 @@ spec:
           volumeMounts:
             - name: host-varlib-volume
               mountPath: /var/lib
-            - name: profile-configmap-volume
+            - name: seccomp-operator-profile-volume
               mountPath: /opt/seccomp-profiles
               readOnly: true
           securityContext:
@@ -109,7 +128,9 @@ spec:
           type: DirectoryOrCreate
       - name: profile-configmap-volume
         configMap:
-          name: seccomp-operator-profile
+          name: default-seccomp-profiles
+      - emptyDir: {}
+        name: seccomp-operator-profile-volume
       tolerations:
         - effect: NoSchedule
           key: node-role.kubernetes.io/master

@@ -72,7 +72,7 @@ func (e *e2e) reconfigureOperator(manifest string) {
 	e.cleanupOperator(manifest)
 	e.run(
 		//nolint:lll
-		"sed", "-i", `N;/containers:\n\ *- env:/a \ \ \ \ \ \ \ \ - name: PROFILE_CONTROLLER\n\  \ \ \ \ \ \ \ \ value: SeccompProfile`,
+		"sed", "-i", `/\ *- env:/a \ \ \ \ \ \ \ \ - name: PROFILE_CONTROLLER\n\  \ \ \ \ \ \ \ \ value: SeccompProfile`,
 		manifest,
 	)
 	e.deployOperator(manifest)

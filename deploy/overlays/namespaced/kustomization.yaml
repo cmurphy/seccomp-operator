@@ -20,8 +20,22 @@ patchesJson6902:
   - target:
       group: rbac.authorization.k8s.io
       version: v1
+      kind: ClusterRole
+      name: seccomp-profile-reader
+    path: clusterrole.yaml
+
+  - target:
+      group: rbac.authorization.k8s.io
+      version: v1
       kind: ClusterRoleBinding
       name: config-map-reader-binding
+    path: clusterrolebinding.yaml
+
+  - target:
+      group: rbac.authorization.k8s.io
+      version: v1
+      kind: ClusterRoleBinding
+      name: seccomp-profile-reader-binding
     path: clusterrolebinding.yaml
 
   - target:

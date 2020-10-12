@@ -89,10 +89,6 @@ func (e *e2e) deployOperator(manifest string) {
 	e.logf("Deploying operator")
 	e.kubectl("create", "-f", manifest)
 
-	// Deploy SeccompProfiles
-	e.logf("Deploying default profiles")
-	e.kubectl("create", "-f", "deploy/defaultprofiles.yaml")
-
 	// Wait for the operator to be ready
 	e.logf("Waiting for operator to be ready")
 	e.kubectlOperatorNS("wait", "--for", "condition=ready", "pod", "--all")

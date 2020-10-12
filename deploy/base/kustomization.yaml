@@ -30,5 +30,10 @@ configMapGenerator:
     files:
       - profiles/nginx-1.19.1.json
 
+  - name: default-seccomp-profiles
+    files:
+      - profiles/seccomp-operator.yaml
+      - profiles/nginx-1.19.1.yaml
+
 generatorOptions:
   disableNameSuffixHash: true

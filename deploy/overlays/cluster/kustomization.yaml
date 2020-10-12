@@ -18,3 +18,9 @@ patchesJson6902:
       kind: ConfigMap
       name: seccomp-operator-profile
     path: operator-profile.yaml
+
+  - target:
+      version: v1
+      kind: ConfigMap
+      name: default-seccomp-profiles
+    path: default-seccomp-profiles.yaml
