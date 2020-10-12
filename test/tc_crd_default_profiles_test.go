@@ -62,7 +62,7 @@ func (e *e2e) verifyCRDProfileContent(node string, sp *seccompoperatorv1alpha1.S
 	name := sp.Name
 	expected, err := json.Marshal(sp.Spec)
 	e.Nil(err)
-	profilePath, err := profile.GetProfilePath(name, sp.ObjectMeta.Namespace, "custom-profiles")
+	profilePath, err := profile.GetProfilePath(name, sp.ObjectMeta.Namespace, sp.Spec.TargetWorkload)
 	e.Nil(err)
 	catOutput := e.execNode(node, "cat", profilePath)
 	e.Contains(catOutput, string(expected))
