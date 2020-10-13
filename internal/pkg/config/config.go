@@ -28,20 +28,7 @@ const (
 	// profiles.
 	ProfilesRootPath = kubeletSeccompRootPath + "/operator"
 
-	// DefaultProfilesConfigMapName is the configMap name for the default
-	// profiles.
-	DefaultProfilesConfigMapName = "default-profiles"
-
-	// CustomProfilesDirectoryName is the directory where profiles from the
-	// SeccompProfile CRD are stored.
-	CustomProfilesDirectoryName = "custom-profiles"
-
 	// NodeNameEnvKey is the default environment variable key for retrieving
 	// the name of the current node.
 	NodeNameEnvKey = "NODE_NAME"
-
-	// ProfileControllerEnvKey is the environment variable that configures
-	// which type of controller is authoritative over seccomp profiles, either
-	// CRD or ConfigMap.
-	ProfileControllerEnvKey = "PROFILE_CONTROLLER"
 )

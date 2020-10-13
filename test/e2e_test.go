@@ -23,8 +23,6 @@ import (
 	"fmt"
 	"strings"
 
-	v1 "k8s.io/api/core/v1"
-
 	seccompoperatorv1alpha1 "sigs.k8s.io/seccomp-operator/api/v1alpha1"
 )
 
@@ -55,14 +53,6 @@ func (e *e2e) TestSeccompOperator() {
 		{
 			"Re-deploy the operator",
 			e.testCaseReDeployOperator,
-		},
-		{
-			"Deploy invalid profile",
-			e.testCaseDeployInvalidProfile,
-		},
-		{
-			"Verify example CRD profiles",
-			e.testCaseCRDDefaultAndExampleProfiles,
 		},
 	} {
 		e.logf("> Running testcase: %s", testCase.description)
@@ -105,15 +95,6 @@ func (e *e2e) getWorkerNodes() []string {
 	e.logf("Got worker nodes: %v", nodes)
 
 	return nodes
-}
-
-func (e *e2e) getConfigMap(name, namespace string) *v1.ConfigMap {
-	configMapJSON := e.kubectl(
-		"-n", namespace, "get", "configmap", name, "-o", "json",
-	)
-	configMap := &v1.ConfigMap{}
-	e.Nil(json.Unmarshal([]byte(configMapJSON), configMap))
-	return configMap
 }
 
 func (e *e2e) getSeccompProfile(name, namespace string) *seccompoperatorv1alpha1.SeccompProfile {

@@ -9,7 +9,6 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.6.1
 	github.com/urfave/cli/v2 v2.2.0
-	k8s.io/api v0.19.2
 	k8s.io/apimachinery v0.19.2
 	k8s.io/klog/v2 v2.3.0
 	k8s.io/release v0.4.1

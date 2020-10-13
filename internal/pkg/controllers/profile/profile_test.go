@@ -26,50 +26,16 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/test"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	seccompoperatorv1alpha1 "sigs.k8s.io/seccomp-operator/api/v1alpha1"
 	"sigs.k8s.io/seccomp-operator/internal/pkg/config"
 )
-
-func TestIsProfile(t *testing.T) {
-	cases := map[string]struct {
-		obj  runtime.Object
-		want bool
-	}{
-		"NotAProfile": {
-			obj:  &corev1.ConfigMap{},
-			want: false,
-		},
-		"NotAConfigMap": {
-			obj:  &corev1.Secret{},
-			want: false,
-		},
-		"IsProfile": {
-			obj: &corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{
-						seccompProfileAnnotation: "true",
-					},
-				},
-			},
-			want: true,
-		},
-	}
-
-	for name, tc := range cases {
-		t.Run(name, func(t *testing.T) {
-			got := isProfile(tc.obj)
-			require.Equal(t, tc.want, got)
-		})
-	}
-}
 
 func TestReconcile(t *testing.T) {
 	name := "cool-profile"
@@ -82,7 +48,6 @@ func TestReconcile(t *testing.T) {
 		req        reconcile.Request
 		wantResult reconcile.Result
 		wantErr    error
-		ac         kind
 	}{
 		"ProfileNotFound": {
 			rec: &Reconciler{
@@ -94,34 +59,8 @@ func TestReconcile(t *testing.T) {
 			req:        reconcile.Request{NamespacedName: types.NamespacedName{Namespace: namespace, Name: name}},
 			wantResult: reconcile.Result{},
 			wantErr:    nil,
-			ac:         configMapKind,
 		},
-		"ConfigMapErrGetProfile": {
-			rec: &Reconciler{
-				client: &test.MockClient{
-					MockGet: test.NewMockGetFn(errOops),
-				},
-				log: log.Log,
-			},
-			req:        reconcile.Request{NamespacedName: types.NamespacedName{Namespace: namespace, Name: name}},
-			wantResult: reconcile.Result{},
-			wantErr:    errors.Wrap(errOops, errGetProfile),
-			ac:         configMapKind,
-		},
-		"ConfigMapGotProfile": {
-			rec: &Reconciler{
-				client: &test.MockClient{
-					MockGet: test.NewMockGetFn(nil),
-				},
-				log:    log.Log,
-				record: event.NewNopRecorder(),
-			},
-			req:        reconcile.Request{NamespacedName: types.NamespacedName{Namespace: namespace, Name: name}},
-			wantResult: reconcile.Result{},
-			wantErr:    nil,
-			ac:         configMapKind,
-		},
-		"CRDErrGetProfile": {
+		"ErrGetProfile": {
 			rec: &Reconciler{
 				client: &test.MockClient{
 					MockGet: test.NewMockGetFn(errOops),
@@ -132,7 +71,7 @@ func TestReconcile(t *testing.T) {
 			wantResult: reconcile.Result{},
 			wantErr:    errors.Wrap(errOops, errGetProfile),
 		},
-		"CRDGotProfile": {
+		"GotProfile": {
 			rec: &Reconciler{
 				client: &test.MockClient{
 					MockGet: test.NewMockGetFn(nil),
@@ -144,12 +83,10 @@ func TestReconcile(t *testing.T) {
 			req:        reconcile.Request{NamespacedName: types.NamespacedName{Namespace: namespace, Name: name}},
 			wantResult: reconcile.Result{},
 			wantErr:    nil,
-			ac:         seccompProfileKind,
 		},
 	}
 
 	for name, tc := range cases {
-		activeController = tc.ac
 		t.Run(name, func(t *testing.T) {
 			gotResult, gotErr := tc.rec.Reconcile(tc.req)
 			if tc.wantErr != nil {
@@ -180,7 +117,7 @@ func TestSaveProfileOnDisk(t *testing.T) {
 		fileCreated bool
 	}{
 		"CreateDirsAndWriteFile": {
-			fileName:    path.Join(dir, "/seccomp/operator/namespace/configmap/filename.json"),
+			fileName:    path.Join(dir, "/seccomp/operator/namespace/sp/filename.json"),
 			contents:    "some content",
 			fileCreated: true,
 		},
@@ -230,48 +167,67 @@ func TestSaveProfileOnDisk(t *testing.T) {
 
 func TestGetProfilePath(t *testing.T) {
 	cases := map[string]struct {
-		want        string
-		wantErr     string
-		profileName string
-		config      *corev1.ConfigMap
+		want    string
+		wantErr string
+		sp      *seccompoperatorv1alpha1.SeccompProfile
 	}{
-		"AppendNamespaceConfigNameAndProfile": {
-			want:        path.Join(config.ProfilesRootPath, "config-namespace", "config-name", "file.json"),
-			profileName: "file.json",
-			config: &corev1.ConfigMap{
+		"AppendNamespaceAndProfile": {
+			want: path.Join(config.ProfilesRootPath, "config-namespace", "config-target", "file.json"),
+			sp: &seccompoperatorv1alpha1.SeccompProfile{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "config-name",
+					Name:      "file.json",
 					Namespace: "config-namespace",
+				},
+				Spec: seccompoperatorv1alpha1.SeccompProfileSpec{
+					TargetWorkload: "config-target",
 				},
 			},
 		},
 		"BlockTraversalAtProfileName": {
-			want:        path.Join(config.ProfilesRootPath, "ns", "cfg", "file.json"),
-			profileName: "../../../../../file.json",
-			config: &corev1.ConfigMap{
+			want: path.Join(config.ProfilesRootPath, "ns", "config-target", "file.json"),
+			sp: &seccompoperatorv1alpha1.SeccompProfile{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "cfg",
+					Name:      "../../../../../file.json",
 					Namespace: "ns",
+				},
+				Spec: seccompoperatorv1alpha1.SeccompProfileSpec{
+					TargetWorkload: "config-target",
 				},
 			},
 		},
-		"BlockTraversalAtConfigName": {
-			want:        path.Join(config.ProfilesRootPath, "ns", "cfg", "file.json"),
-			profileName: "file.json",
-			config: &corev1.ConfigMap{
+		"BlockTraversalAtTargetName": {
+			want: path.Join(config.ProfilesRootPath, "ns", "config-target", "file.json"),
+			sp: &seccompoperatorv1alpha1.SeccompProfile{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "../../../../../cfg",
+					Name:      "file.json",
 					Namespace: "ns",
+				},
+				Spec: seccompoperatorv1alpha1.SeccompProfileSpec{
+					TargetWorkload: "../../../../../config-target",
 				},
 			},
 		},
-		"BlockTraversalAtConfigNamespace": {
-			want:        path.Join(config.ProfilesRootPath, "ns", "cfg", "file.json"),
-			profileName: "file.json",
-			config: &corev1.ConfigMap{
+		"BlockTraversalAtSPNamespace": {
+			want: path.Join(config.ProfilesRootPath, "ns", "config-target", "file.json"),
+			sp: &seccompoperatorv1alpha1.SeccompProfile{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "cfg",
+					Name:      "file.json",
 					Namespace: "../../../../../ns",
+				},
+				Spec: seccompoperatorv1alpha1.SeccompProfileSpec{
+					TargetWorkload: "config-target",
+				},
+			},
+		},
+		"AppendExtension": {
+			want: path.Join(config.ProfilesRootPath, "config-namespace", "config-target", "file.json"),
+			sp: &seccompoperatorv1alpha1.SeccompProfile{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "file",
+					Namespace: "config-namespace",
+				},
+				Spec: seccompoperatorv1alpha1.SeccompProfileSpec{
+					TargetWorkload: "config-target",
 				},
 			},
 		},
@@ -279,7 +235,7 @@ func TestGetProfilePath(t *testing.T) {
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			got, gotErr := GetProfilePath(tc.profileName, tc.config.ObjectMeta.Namespace, tc.config.ObjectMeta.Name)
+			got, gotErr := GetProfilePath(tc.sp.ObjectMeta.Name, tc.sp.ObjectMeta.Namespace, tc.sp.Spec.TargetWorkload)
 			if tc.wantErr == "" {
 				require.NoError(t, gotErr)
 			} else {
@@ -314,27 +270,5 @@ func TestIgnoreNotFound(t *testing.T) {
 			got := ignoreNotFound(tc.err)
 			require.Equal(t, tc.want, got)
 		})
-	}
-}
-
-func TestValidateProfile(t *testing.T) {
-	for _, tc := range []struct {
-		profile       string
-		shouldSucceed bool
-	}{
-		{"wrong", false},
-		{`{"defaultAction": true}`, false},
-		{`{"syscalls": "wrong"}`, false},
-		{`{}`, true},
-		{`{"defaultAction": "SCMP_ACT_ALLOW"}`, true},
-		{`{"syscalls": []}`, true},
-	} {
-		msg := "Profile content: " + tc.profile
-		err := validateProfile(tc.profile)
-		if tc.shouldSucceed {
-			require.Nil(t, err, msg)
-		} else {
-			require.NotNil(t, err, msg)
-		}
 	}
 }

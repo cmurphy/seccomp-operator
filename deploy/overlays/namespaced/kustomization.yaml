@@ -1,4 +1,4 @@
-# This is the namespaced deployment, which only watches configMaps for one
+# This is the namespaced deployment, which only watches SeccompProfiles for one
 # namespace.
 ---
 apiVersion: kustomize.config.k8s.io/v1beta1
@@ -14,7 +14,7 @@ patchesJson6902:
       group: rbac.authorization.k8s.io
       version: v1
       kind: ClusterRole
-      name: config-map-reader
+      name: event-creator
     path: clusterrole.yaml
 
   - target:
@@ -28,7 +28,7 @@ patchesJson6902:
       group: rbac.authorization.k8s.io
       version: v1
       kind: ClusterRoleBinding
-      name: config-map-reader-binding
+      name: event-creator-binding
     path: clusterrolebinding.yaml
 
   - target:
@@ -37,10 +37,3 @@ patchesJson6902:
       kind: ClusterRoleBinding
       name: seccomp-profile-reader-binding
     path: clusterrolebinding.yaml
-
-  - target:
-      version: v1
-      kind: ConfigMap
-      name: default-profiles
-      namespace: seccomp-operator
-    path: configmap.yaml

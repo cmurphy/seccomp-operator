@@ -22,14 +22,6 @@ resources:
   - crd.yaml
 
 configMapGenerator:
-  - name: seccomp-operator-profile
-    files:
-      - profiles/seccomp-operator.json
-
-  - name: default-profiles
-    files:
-      - profiles/nginx-1.19.1.json
-
   - name: default-seccomp-profiles
     files:
       - profiles/seccomp-operator.yaml

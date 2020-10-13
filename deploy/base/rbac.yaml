@@ -13,12 +13,9 @@ metadata:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: config-map-reader
+  name: event-creator
   namespace: seccomp-operator
 rules:
-- apiGroups: [""]
-  resources: ["configmaps"]
-  verbs: ["get", "watch", "list"]
 - apiGroups: [""]
   resources: ["events"]
   verbs: ["create", "patch"]
@@ -26,14 +23,14 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: config-map-reader-binding
+  name: event-creator-binding
 subjects:
 - kind: ServiceAccount
   name: seccomp-operator
   namespace: seccomp-operator
 roleRef:
   kind: ClusterRole
-  name: config-map-reader
+  name: event-creator-reader
   apiGroup: rbac.authorization.k8s.io
 ---
 apiVersion: rbac.authorization.k8s.io/v1
